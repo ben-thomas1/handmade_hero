@@ -9,7 +9,8 @@ target_options = []
 
 if get_option('buildtype') == 'debug'
   cpp_args += [
-    '-Og', '-g3',
+    # Keep optimization disabled for predictable source stepping.
+    '-O0', '-g3', '-gdwarf-5',
     '-Wshadow', '-Wconversion', '-Wsign-conversion', '-Wvla',
     '-Wcast-align', '-Wpointer-arith', '-Wwrite-strings', '-Wformat=2',
     '-Wnull-dereference', '-Wdouble-promotion', '-Wmissing-declarations',
