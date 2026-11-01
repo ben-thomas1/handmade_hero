@@ -1,4 +1,4 @@
-project('handmade_hero', 'cpp',
+project('handmade_hero', 'cpp', 'c',
   meson_version : '>=1.3.0',
   default_options : [
     'cpp_std=c++26',
@@ -75,7 +75,24 @@ if host_machine.system() == 'linux' and meson.get_compiler('cpp').get_id() == 'c
   ]
 endif
 
-executable('handmade_hero', 'main.cpp',
+wayland = dependency('wayland-client', include_type : 'system')
+wayland_protocols = dependency('wayland-protocols')
+wayland_scanner = find_program('wayland-scanner')
+xdg_shell_xml = wayland_protocols.get_variable(pkgconfig : 'pkgdatadir') / 'stable/xdg-shell/xdg-shell.xml'
+
+xdg_shell_header = custom_target('xdg-shell-header',
+  input : xdg_shell_xml,
+  output : 'xdg-shell-client-protocol.h',
+  command : [wayland_scanner, 'client-header', '@INPUT@', '@OUTPUT@'],
+)
+xdg_shell_code = custom_target('xdg-shell-code',
+  input : xdg_shell_xml,
+  output : 'xdg-shell-protocol.c',
+  command : [wayland_scanner, 'private-code', '@INPUT@', '@OUTPUT@'],
+)
+
+executable('handmade_hero', ['src/main.cpp', 'src/window.cpp', xdg_shell_header, xdg_shell_code],
+  dependencies : [wayland],
   cpp_args : cpp_args,
   link_args : link_args,
   override_options : target_options,
