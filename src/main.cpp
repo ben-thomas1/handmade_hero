@@ -28,7 +28,7 @@ render_to_buffer(BackBuffer *buf, State *state)
     for (u32 j = 0; j < buf->height; j++) {
         for (u32 i = 0; i < buf->width; i++) {
             // Scale both axes by height so circles stay circular.
-            f32 x = (2.0f * (f32)i - (f32)buf->width) / (f32)buf->height;
+            f32 x = (2.0f * (f32)i - (f32)buf->width)  / (f32)buf->height;
             f32 y = (2.0f * (f32)j - (f32)buf->height) / (f32)buf->height;
             f32 radius = std::sqrt(x * x + y * y);
             f32 angle = std::atan2(y, x);
