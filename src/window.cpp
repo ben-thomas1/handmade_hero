@@ -137,7 +137,7 @@ Window::init(u32 width, u32 height)
         int fd = memfd_create("handmade-hero-backbuffer", MFD_CLOEXEC);
         ftruncate(fd, size);
         buffer->buffer = (u32 *)mmap(nullptr, size,
-                                   PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+                                     PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
         wl_shm_pool *pool = wl_shm_create_pool(this->shm, fd, (i32)size);
         this->wayland_buffers[i] = wl_shm_pool_create_buffer(
@@ -148,7 +148,10 @@ Window::init(u32 width, u32 height)
                                &this->buffer_busy[i]);
         wl_shm_pool_destroy(pool);
         close(fd);
+        this->buffer_busy[i] = false;
     }
+    this->render_index = 0;
+    this->frame_callback = nullptr;
 }
 
 BackBuffer *
