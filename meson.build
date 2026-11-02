@@ -16,8 +16,7 @@ target_options = []
 
 if get_option('buildtype') == 'debug'
   cpp_args += [
-    # Keep optimization disabled for predictable source stepping.
-    '-O0',
+    '-O0', # -Og breaks raddebugger for some reason
     '-g3',
     '-gdwarf-5',
     '-Wshadow',
@@ -91,7 +90,36 @@ xdg_shell_code = custom_target('xdg-shell-code',
   command : [wayland_scanner, 'private-code', '@INPUT@', '@OUTPUT@'],
 )
 
-executable('handmade_hero', ['src/main.cpp', 'src/window.cpp', xdg_shell_header, xdg_shell_code],
+viewporter_xml = wayland_protocols.get_variable(pkgconfig : 'pkgdatadir') / 'stable/viewporter/viewporter.xml'
+viewporter_header = custom_target('viewporter-header',
+  input : viewporter_xml,
+  output : 'viewporter-client-protocol.h',
+  command : [wayland_scanner, 'client-header', '@INPUT@', '@OUTPUT@'],
+)
+viewporter_code = custom_target('viewporter-code',
+  input : viewporter_xml,
+  output : 'viewporter-protocol.c',
+  command : [wayland_scanner, 'private-code', '@INPUT@', '@OUTPUT@'],
+)
+
+xdg_decoration_xml = wayland_protocols.get_variable(pkgconfig : 'pkgdatadir') / 'unstable/xdg-decoration/xdg-decoration-unstable-v1.xml'
+xdg_decoration_header = custom_target('xdg-decoration-header',
+  input : xdg_decoration_xml,
+  output : 'xdg-decoration-client-protocol.h',
+  command : [wayland_scanner, 'client-header', '@INPUT@', '@OUTPUT@'],
+)
+xdg_decoration_code = custom_target('xdg-decoration-code',
+  input : xdg_decoration_xml,
+  output : 'xdg-decoration-protocol.c',
+  command : [wayland_scanner, 'private-code', '@INPUT@', '@OUTPUT@'],
+)
+
+executable('handmade_hero', [
+  'src/main.cpp', 'src/window.cpp',
+  xdg_shell_header, xdg_shell_code,
+  viewporter_header, viewporter_code,
+  xdg_decoration_header, xdg_decoration_code,
+],
   dependencies : [wayland],
   cpp_args : cpp_args,
   link_args : link_args,

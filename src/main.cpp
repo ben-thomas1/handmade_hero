@@ -9,8 +9,8 @@
 struct Config
 {
     char name[32] = "Handmade Hero";
-    u32 screen_width = 1280;
-    u32 screen_height = 720;
+    u32 screen_width  = 640;
+    u32 screen_height = 480;
 };
 
 struct State
