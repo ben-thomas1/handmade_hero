@@ -2,8 +2,7 @@
 
 #include "types.h"
 
-struct BackBuffer
-{
+struct BackBuffer {
     u32 *buffer;
     u32 width;
     u32 height;
