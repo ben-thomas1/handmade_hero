@@ -20,7 +20,6 @@ if get_option('buildtype') == 'debug'
     '-O0', # -Og breaks raddebugger for some reason
     '-g3',
     '-gdwarf-5',
-    '-Wshadow',
     '-Wconversion',
     '-Wsign-conversion',
     '-Wvla',
