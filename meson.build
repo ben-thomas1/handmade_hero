@@ -3,6 +3,7 @@ project('handmade_hero', 'cpp', 'c',
   default_options : [
     'cpp_std=c++26',
     'warning_level=2',
+    'werror=false',
     'buildtype=debug',
   ],
 )

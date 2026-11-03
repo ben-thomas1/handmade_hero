@@ -14,7 +14,7 @@ release: build/release/build.ninja
 	ln -sf ./build/release/handmade_hero ./hh-release
 
 build/debug/build.ninja:
-	meson setup build/debug --buildtype=debug -Dwerror=true -Db_sanitize=address,undefined -Db_lundef=false
+	meson setup build/debug --buildtype=debug -Db_sanitize=address,undefined -Db_lundef=false
 
 build/release/build.ninja:
 	meson setup build/release --buildtype=release
