@@ -2,6 +2,7 @@
 
 #include "types.h"
 
+#include <cassert>
 
 template <typename T>
 struct Queue {
@@ -13,8 +14,10 @@ struct Queue {
 
     void init(T *buffer, u32 buff_size);
     bool enqueue(T val);
+    // Precondition: !empty(). Dequeuing an empty queue is undefined behaviour.
     T dequeue();
     T peek();
+    bool empty();
 };
 
 
@@ -33,7 +36,7 @@ template <typename T>
 bool
 Queue<T>::enqueue(T val)
 {
-    if (this->len == this->cap) return false; // failed
+    if (this->len == this->cap) return false;
     this->buffer[this->end++] = val;
     this->end %= this->cap;
     this->len++;
@@ -44,7 +47,7 @@ template <typename T>
 T
 Queue<T>::dequeue()
 {
-    if (this->len == 0) return T{}; // failed
+    assert(!this->empty());
     T val = this->buffer[this->front++];
     this->front %= this->cap;
     this->len--;
@@ -57,4 +60,11 @@ Queue<T>::peek()
 {
     if (this->len == 0) return T{}; // failed
     return this->buffer[this->front];
+}
+
+template <typename T>
+bool
+Queue<T>::empty()
+{
+    return this->len == 0;
 }

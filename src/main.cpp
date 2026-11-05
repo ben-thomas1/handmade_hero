@@ -62,7 +62,7 @@ main(i32 argc, char **argv)
     Config conf;
 
     std::println("Running {}", conf.name);
-    std::println("Window dims: {} x {}", conf.screen_width, conf.screen_height);
+    std::println("Render dims: {} x {}", conf.screen_width, conf.screen_height);
 
     Window window;
     window.init(conf.screen_width, conf.screen_height);
@@ -85,6 +85,8 @@ main(i32 argc, char **argv)
             state.frame++;
         }
     }
+    #ifndef NDEBUG
     window.free();
+    #endif
     return 0;
 }

@@ -25,30 +25,36 @@ enum KeyboardButtons : u8 {
     KEY_NUM4,
     KEY_SPACE,
     KEY_ESC,
-    KEY_SHIFT,
-    KEY_CTRL,
-    KEY_ALT,
+    KEY_LSHIFT,
+    KEY_RSHIFT,
+    KEY_LCTRL,
+    KEY_RCTRL,
+    KEY_LALT,
+    KEY_RALT,
     KEY_COUNT,
 };
 
-// Evdev codes in the same order as Input::buttons. Zero means no second key.
-inline constexpr u32 KEY_CODES[KEY_COUNT][2] = {
-    {17, 0},   // W
-    {30, 0},   // A
-    {31, 0},   // S
-    {32, 0},   // D
-    {16, 0},   // Q
-    {18, 0},   // E
-    {33, 0},   // F
-    {2, 0},    // 1
-    {3, 0},    // 2
-    {4, 0},    // 3
-    {5, 0},    // 4
-    {57, 0},   // Space
-    {1, 0},    // Escape
-    {42, 54},  // Left/right Shift
-    {29, 97},  // Left/right Ctrl
-    {56, 100}, // Left/right Alt
+// Evdev codes in the same order as Input::buttons.
+inline constexpr u32 KEY_CODES[KEY_COUNT] = {
+    17,  // W
+    30,  // A
+    31,  // S
+    32,  // D
+    16,  // Q
+    18,  // E
+    33,  // F
+    2,   // 1
+    3,   // 2
+    4,   // 3
+    5,   // 4
+    57,  // Space
+    1,   // Escape
+    42,  // Left Shift
+    54,  // Right Shift
+    29,  // Left Ctrl
+    97,  // Right Ctrl
+    56,  // Left Alt
+    100, // Right Alt
 };
 
 enum MouseButtons : u8 {
@@ -134,7 +140,7 @@ struct std::formatter<Input> {
     {
         const char *key_names[KEY_COUNT] = {
             "W", "A", "S", "D", "Q", "E", "F",
-            "1", "2", "3", "4", "space", "esc", "shift", "ctrl", "alt",
+            "1", "2", "3", "4", "space", "esc", "lshift", "rshift", "lctrl", "rctrl", "lalt", "ralt",
         };
         const char *mouse_names[MOUSE_COUNT] = { "left", "middle", "right" };
 

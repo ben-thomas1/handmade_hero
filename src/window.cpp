@@ -107,8 +107,7 @@ update_keyboard_buttons(Window *window, Input *input, bool press_edges = true)
 {
     for (u32 i = 0; i < KEY_COUNT; i++) {
         InputButton *button = &input->buttons[i];
-        bool down = window->keys_down[KEY_CODES[i][0]] ||
-                    window->keys_down[KEY_CODES[i][1]];
+        bool down = window->keys_down[KEY_CODES[i]];
         if (button->is_down != down)
         {
             button->is_down = down;
@@ -411,7 +410,7 @@ Window::process_events(Input *input, i32 timeout_ms) {
 
     while (true)
     {
-        while (this->events.len > 0)
+        while (!this->events.empty())
         {
             InputEvent event = this->events.dequeue();
             input->has_input = true;
@@ -484,7 +483,7 @@ Window::process_events(Input *input, i32 timeout_ms) {
             this->close_requested = true;
             break;
         }
-        if (this->events.len > 0) continue;
+        if (!this->events.empty()) continue;
         if (this->close_requested) break;
         if (wl_display_prepare_read(this->display) != 0) continue;
 
