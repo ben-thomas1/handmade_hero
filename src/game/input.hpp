@@ -1,6 +1,6 @@
 #pragma once
 
-#include "types.h"
+#include "base/types.hpp"
 
 #include <format>
 
@@ -34,40 +34,11 @@ enum KeyboardButtons : u8 {
     KEY_COUNT,
 };
 
-// Evdev codes in the same order as Input::buttons.
-inline constexpr u32 KEY_CODES[KEY_COUNT] = {
-    17,  // W
-    30,  // A
-    31,  // S
-    32,  // D
-    16,  // Q
-    18,  // E
-    33,  // F
-    2,   // 1
-    3,   // 2
-    4,   // 3
-    5,   // 4
-    57,  // Space
-    1,   // Escape
-    42,  // Left Shift
-    54,  // Right Shift
-    29,  // Left Ctrl
-    97,  // Right Ctrl
-    56,  // Left Alt
-    100, // Right Alt
-};
-
 enum MouseButtons : u8 {
     MOUSE_LEFT,
     MOUSE_MIDDLE,
     MOUSE_RIGHT,
     MOUSE_COUNT,
-};
-
-inline constexpr u32 MOUSE_CODES[MOUSE_COUNT] = {
-    272, // Left
-    274, // Middle
-    273, // Right
 };
 
 enum InputEventType : u8 {

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "backbuffer.hpp"
-#include "input.hpp"
-#include "queue.hpp"
+#include "game/backbuffer.hpp"
+#include "game/input.hpp"
+#include "base/queue.hpp"
 
 struct wl_display;
 struct wl_registry;

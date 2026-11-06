@@ -1,4 +1,4 @@
-#include "window.hpp"
+#include "platform/linux/wayland.hpp"
 #include "xdg-shell-client-protocol.h"
 #include "xdg-decoration-client-protocol.h"
 #include "viewporter-client-protocol.h"
@@ -13,6 +13,35 @@
 #include <poll.h>
 #include <sys/mman.h>
 #include <unistd.h>
+
+// Evdev codes in the same order as Input::buttons.
+inline constexpr u32 KEY_CODES[KEY_COUNT] = {
+    17,  // W
+    30,  // A
+    31,  // S
+    32,  // D
+    16,  // Q
+    18,  // E
+    33,  // F
+    2,   // 1
+    3,   // 2
+    4,   // 3
+    5,   // 4
+    57,  // Space
+    1,   // Escape
+    42,  // Left Shift
+    54,  // Right Shift
+    29,  // Left Ctrl
+    97,  // Right Ctrl
+    56,  // Left Alt
+    100, // Right Alt
+};
+
+inline constexpr u32 MOUSE_CODES[MOUSE_COUNT] = {
+    272, // Left
+    274, // Middle
+    273, // Right
+};
 
 static void
 enqueue_input_event(Window *window, InputEvent event)

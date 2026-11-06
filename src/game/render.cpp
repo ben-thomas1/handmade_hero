@@ -1,5 +1,5 @@
-#include "backbuffer.hpp"
-#include "state.hpp"
+#include "game/backbuffer.hpp"
+#include "game/state.hpp"
 
 #include <cmath>
 

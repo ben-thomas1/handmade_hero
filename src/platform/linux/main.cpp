@@ -1,12 +1,13 @@
-#include "window.hpp"
-#include "input.hpp"
-#include "sound.hpp"
-#include "p_audio.hpp"
-#include "block_cbuff.hpp"
-#include "state.hpp"
-#include "types.h"
+#include "platform/linux/wayland.hpp"
+#include "game/input.hpp"
+#include "game/sound.hpp"
+#include "platform/linux/pipewire.hpp"
+#include "base/block_cbuff.hpp"
+#include "game/state.hpp"
+#include "game/game.hpp"
+#include "base/types.hpp"
 
-#include "render.hpp"
+#include "game/render.hpp"
 #include <print>
 #include <stdint.h>
 
@@ -16,12 +17,13 @@ struct Config {
     u32 screen_height = 480;
 };
 
-void
-update_game(Input *input, State *state)
+static u32
+read_sound(void *data, void *dst, u32 frame_count)
 {
-    if (input->close_request || input->buttons[KEY_Q].pressed) state->running = false;
-    state->mouse_x = input->mouse_x;
-    state->mouse_y = input->mouse_y;
+    BlockCBuff<PCMSample> *samples = (BlockCBuff<PCMSample> *)data;
+    u32 count = frame_count < samples->len ? frame_count : samples->len;
+    samples->pop_block((PCMSample *)dst, count);
+    return count;
 }
 
 

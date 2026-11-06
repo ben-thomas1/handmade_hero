@@ -13,6 +13,9 @@ cpp_args = [
   '-fno-rtti',
 ]
 link_args = []
+# Position-independent executable flags must stay off the shared game library.
+exe_cpp_args = []
+exe_link_args = []
 target_options = []
 
 if get_option('buildtype') == 'debug'
@@ -44,6 +47,8 @@ elif get_option('buildtype') == 'release'
     '-ffast-math',
     '-fomit-frame-pointer',
     '-fno-stack-protector',
+  ]
+  exe_cpp_args += [
     '-fPIE',
   ]
   target_options += [
@@ -55,8 +60,10 @@ elif get_option('buildtype') == 'release'
     cpp_args += [
       '-fcf-protection=full',
     ]
-    link_args += [
+    exe_link_args += [
       '-pie',
+    ]
+    link_args += [
       '-Wl,-z,relro,-z,now',
       '-Wl,-z,noexecstack',
     ]
@@ -74,59 +81,22 @@ if host_machine.system() == 'linux' and meson.get_compiler('cpp').get_id() == 'c
   ]
 endif
 
-pipewire = dependency('libpipewire-0.3', include_type : 'system')
-dbus = dependency('dbus-1', include_type : 'system')
+inc = include_directories('src')
 
-wayland = dependency('wayland-client', include_type : 'system')
-wayland_protocols = dependency('wayland-protocols')
-wayland_scanner = find_program('wayland-scanner')
-xdg_shell_xml = wayland_protocols.get_variable(pkgconfig : 'pkgdatadir') / 'stable/xdg-shell/xdg-shell.xml'
+subdir('src/game')
 
-xdg_shell_header = custom_target('xdg-shell-header',
-  input : xdg_shell_xml,
-  output : 'xdg-shell-client-protocol.h',
-  command : [wayland_scanner, 'client-header', '@INPUT@', '@OUTPUT@'],
-)
-xdg_shell_code = custom_target('xdg-shell-code',
-  input : xdg_shell_xml,
-  output : 'xdg-shell-protocol.c',
-  command : [wayland_scanner, 'private-code', '@INPUT@', '@OUTPUT@'],
-)
+if host_machine.system() == 'linux'
+  subdir('src/platform/linux')
+else
+  error('Unsupported platform: ' + host_machine.system())
+endif
 
-viewporter_xml = wayland_protocols.get_variable(pkgconfig : 'pkgdatadir') / 'stable/viewporter/viewporter.xml'
-viewporter_header = custom_target('viewporter-header',
-  input : viewporter_xml,
-  output : 'viewporter-client-protocol.h',
-  command : [wayland_scanner, 'client-header', '@INPUT@', '@OUTPUT@'],
-)
-viewporter_code = custom_target('viewporter-code',
-  input : viewporter_xml,
-  output : 'viewporter-protocol.c',
-  command : [wayland_scanner, 'private-code', '@INPUT@', '@OUTPUT@'],
-)
-
-xdg_decoration_xml = wayland_protocols.get_variable(pkgconfig : 'pkgdatadir') / 'unstable/xdg-decoration/xdg-decoration-unstable-v1.xml'
-xdg_decoration_header = custom_target('xdg-decoration-header',
-  input : xdg_decoration_xml,
-  output : 'xdg-decoration-client-protocol.h',
-  command : [wayland_scanner, 'client-header', '@INPUT@', '@OUTPUT@'],
-)
-xdg_decoration_code = custom_target('xdg-decoration-code',
-  input : xdg_decoration_xml,
-  output : 'xdg-decoration-protocol.c',
-  command : [wayland_scanner, 'private-code', '@INPUT@', '@OUTPUT@'],
-)
-
-executable('handmade_hero', [
-  'src/main.cpp', 'src/window.cpp',
-  'src/sound.cpp', 'src/render.cpp', 'src/p_audio.cpp',
-  xdg_shell_header, xdg_shell_code,
-  viewporter_header, viewporter_code,
-  xdg_decoration_header, xdg_decoration_code,
-],
-  dependencies : [wayland, pipewire, dbus],
-  cpp_args : cpp_args,
-  link_args : link_args,
+executable('handmade_hero', platform_sources,
+  include_directories : [inc, platform_inc],
+  link_with : game,
+  dependencies : platform_deps,
+  cpp_args : cpp_args + exe_cpp_args,
+  link_args : link_args + exe_link_args,
   override_options : target_options,
   install : true,
 )

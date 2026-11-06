@@ -1,4 +1,4 @@
-#include "sound.hpp"
+#include "game/sound.hpp"
 
 #include <cmath>
 #include <numbers>
@@ -23,13 +23,4 @@ bool generate_sound(BlockCBuff<PCMSample> *dst, u32 n, u32 sample_rate) {
         n -= count;
     }
     return true;
-}
-
-u32
-read_sound(void *data, void *dst, u32 frame_count)
-{
-    BlockCBuff<PCMSample> *samples = (BlockCBuff<PCMSample> *)data;
-    u32 count = frame_count < samples->len ? frame_count : samples->len;
-    samples->pop_block((PCMSample *)dst, count);
-    return count;
 }

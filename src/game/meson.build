@@ -1,0 +1,7 @@
+game = shared_library('game', files('game.cpp', 'sound.cpp', 'render.cpp'),
+  include_directories : inc,
+  cpp_args : cpp_args,
+  link_args : link_args,
+  override_options : target_options,
+  install : true,
+)
