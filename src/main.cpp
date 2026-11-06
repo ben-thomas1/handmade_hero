@@ -1,10 +1,12 @@
-#include "backbuffer.hpp"
 #include "window.hpp"
 #include "input.hpp"
-
+#include "sound.hpp"
+#include "p_audio.hpp"
+#include "block_cbuff.hpp"
+#include "state.hpp"
 #include "types.h"
 
-#include <cmath>
+#include "render.hpp"
 #include <print>
 #include <stdint.h>
 
@@ -14,45 +16,19 @@ struct Config {
     u32 screen_height = 480;
 };
 
-struct State {
-    u32 frame = 0;
-    f32 mouse_x = 0;
-    f32 mouse_y = 0;
-    bool running = true;
-};
-
 void
-update_game(Input *input, State *state) {
+update_game(Input *input, State *state)
+{
     if (input->close_request || input->buttons[KEY_Q].pressed) state->running = false;
     state->mouse_x = input->mouse_x;
     state->mouse_y = input->mouse_y;
 }
 
-void
-render_to_buffer(BackBuffer *buf, State *state)
-{
-    f32 time = 0.03f * (f32)state->frame;
 
-    for (u32 j = 0; j < buf->height; j++) {
-        for (u32 i = 0; i < buf->width; i++) {
-            // Scale both axes by height so circles stay circular.
-            f32 x = 2.0f * ((f32)i - state->mouse_x) / (f32)buf->height;
-            f32 y = 2.0f * ((f32)j - state->mouse_y) / (f32)buf->height;
-            f32 radius = std::sqrt(x * x + y * y);
-            f32 angle = std::atan2(y, x);
+#define BUFFER_SIZE (2 * AUDIO_SAMPLE_RATE)
+#define AUDIO_LEADING_FRAMES 2048
+#define AUDIO_STARTUP_FRAMES 8192
 
-            // Four spiral arms, rippling rings, and a soft fade at the edges.
-            f32 phase = 12.0f * radius - 4.0f * angle + time;
-            phase += 2.0f * std::sin(5.0f * radius - time);
-            f32 glow = std::exp(-1.0f * radius * radius);
-
-            u32 r = (u32)(255.0f * glow * (0.5f + 0.5f * std::sin(phase)));
-            u32 g = (u32)(255.0f * glow * (0.5f + 0.5f * std::sin(phase + 2.0943951f)));
-            u32 b = (u32)(255.0f * glow * (0.5f + 0.5f * std::sin(phase + 4.1887902f)));
-            buf->buffer[j * buf->width + i] = (r << 16) | (g << 8) | b;
-        }
-    }
-}
 
 i32
 main(i32 argc, char **argv)
@@ -66,6 +42,20 @@ main(i32 argc, char **argv)
 
     Window window;
     window.init(conf.screen_width, conf.screen_height);
+    
+    PCMSample samples[BUFFER_SIZE];
+    BlockCBuff<PCMSample> sound_buf;
+    sound_buf.init(samples, BUFFER_SIZE);
+    // Extra startup audio covers cold debug code and first-frame initialization.
+    if (!generate_sound(&sound_buf, AUDIO_STARTUP_FRAMES, AUDIO_SAMPLE_RATE)) {
+        window.free();
+        return 1;
+    }
+    Audio audio;
+    if (!audio_init(&audio, read_sound, &sound_buf)) {
+        window.free();
+        return 1;
+    }
 
     Input input;
     State state;
@@ -76,7 +66,13 @@ main(i32 argc, char **argv)
         if (input.has_input) std::println("{}", input);
 
         update_game(&input, &state);
-        if (!state.running) break;
+
+        audio_lock(&audio);
+        if (sound_buf.len < AUDIO_LEADING_FRAMES) {
+            u32 frames = AUDIO_LEADING_FRAMES - sound_buf.len;
+            if (!generate_sound(&sound_buf, frames, AUDIO_SAMPLE_RATE)) state.running = false;
+        }
+        audio_unlock(&audio);
 
         if (window.ready_to_render()) {
             render_to_buffer(window.back_buffer(), &state);
@@ -86,6 +82,7 @@ main(i32 argc, char **argv)
         }
     }
     #ifndef NDEBUG
+    audio_shutdown(&audio);
     window.free();
     #endif
     return 0;

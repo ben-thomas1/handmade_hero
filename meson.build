@@ -74,6 +74,9 @@ if host_machine.system() == 'linux' and meson.get_compiler('cpp').get_id() == 'c
   ]
 endif
 
+pipewire = dependency('libpipewire-0.3', include_type : 'system')
+dbus = dependency('dbus-1', include_type : 'system')
+
 wayland = dependency('wayland-client', include_type : 'system')
 wayland_protocols = dependency('wayland-protocols')
 wayland_scanner = find_program('wayland-scanner')
@@ -116,11 +119,12 @@ xdg_decoration_code = custom_target('xdg-decoration-code',
 
 executable('handmade_hero', [
   'src/main.cpp', 'src/window.cpp',
+  'src/sound.cpp', 'src/render.cpp', 'src/p_audio.cpp',
   xdg_shell_header, xdg_shell_code,
   viewporter_header, viewporter_code,
   xdg_decoration_header, xdg_decoration_code,
 ],
-  dependencies : [wayland],
+  dependencies : [wayland, pipewire, dbus],
   cpp_args : cpp_args,
   link_args : link_args,
   override_options : target_options,
