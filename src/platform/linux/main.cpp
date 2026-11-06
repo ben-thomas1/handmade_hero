@@ -83,8 +83,9 @@ main(i32 argc, char **argv)
             state.frame++;
         }
     }
-    #ifndef NDEBUG
+    // The audio thread reads sound_buf on this stack, so stop it in every build.
     audio_shutdown(&audio);
+    #ifndef NDEBUG
     window.free();
     #endif
     return 0;

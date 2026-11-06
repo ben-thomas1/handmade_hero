@@ -411,8 +411,8 @@ Window::init(u32 buffer_width, u32 buffer_height)
         BackBuffer *buffer = &this->back_buffers[i];
         buffer->width = buffer_width;
         buffer->height = buffer_height;
-        u32 stride = buffer_width * buffer->bytes_per_pixel;
-        u32 size = stride * buffer_height;
+        buffer->pitch = buffer_width * buffer->bytes_per_pixel;
+        u32 size = buffer->pitch * buffer_height;
         int fd = memfd_create("handmade-hero-backbuffer", MFD_CLOEXEC);
         ftruncate(fd, size);
         buffer->buffer = (u32 *)mmap(nullptr, size,
@@ -421,7 +421,7 @@ Window::init(u32 buffer_width, u32 buffer_height)
         wl_shm_pool *pool = wl_shm_create_pool(this->shm, fd, (i32)size);
         this->wayland_buffers[i] = wl_shm_pool_create_buffer(
             pool, 0,
-            (i32)buffer_width, (i32)buffer_height, (i32)stride,
+            (i32)buffer_width, (i32)buffer_height, (i32)buffer->pitch,
             WL_SHM_FORMAT_XRGB8888);
         wl_buffer_add_listener(this->wayland_buffers[i], &BUFFER_LISTENER,
                                &this->buffer_busy[i]);
@@ -611,7 +611,7 @@ Window::free()
     {
         BackBuffer *buffer = &this->back_buffers[i];
         wl_buffer_destroy(this->wayland_buffers[i]);
-        munmap(buffer->buffer, (size_t)buffer->width * buffer->height * buffer->bytes_per_pixel);
+        munmap(buffer->buffer, (size_t)buffer->pitch * buffer->height);
     }
     zxdg_toplevel_decoration_v1_destroy(this->decoration);
     xdg_toplevel_destroy(this->toplevel);

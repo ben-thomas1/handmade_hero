@@ -1,4 +1,5 @@
 #include "platform/linux/pipewire.hpp"
+#include "game/sound.hpp"
 
 #include <pipewire/pipewire.h>
 #include <spa/param/audio/format-utils.h>

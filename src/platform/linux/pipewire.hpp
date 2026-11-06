@@ -2,10 +2,6 @@
 
 #include "base/types.hpp"
 
-#define AUDIO_SAMPLE_RATE 48'000
-#define AUDIO_CHANNELS 2
-
-
 struct pw_thread_loop;
 struct pw_stream;
 

@@ -87,6 +87,8 @@ subdir('src/game')
 
 if host_machine.system() == 'linux'
   subdir('src/platform/linux')
+elif host_machine.system() == 'darwin'
+  subdir('src/platform/macos')
 else
   error('Unsupported platform: ' + host_machine.system())
 endif
@@ -96,6 +98,7 @@ executable('handmade_hero', platform_sources,
   link_with : game,
   dependencies : platform_deps,
   cpp_args : cpp_args + exe_cpp_args,
+  objcpp_args : cpp_args + exe_cpp_args,
   link_args : link_args + exe_link_args,
   override_options : target_options,
   install : true,

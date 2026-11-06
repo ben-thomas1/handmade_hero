@@ -10,6 +10,7 @@ render_to_buffer(BackBuffer *buf, State *state)
     f32 time = 0.03f * (f32)state->frame;
 
     for (u32 j = 0; j < buf->height; j++) {
+        u32 *row = (u32 *)(void *)((u8 *)buf->buffer + j * buf->pitch);
         for (u32 i = 0; i < buf->width; i++) {
             // Scale both axes by height so circles stay circular.
             f32 x = 2.0f * ((f32)i - state->mouse_x) / (f32)buf->height;
@@ -25,7 +26,7 @@ render_to_buffer(BackBuffer *buf, State *state)
             u32 r = (u32)(255.0f * glow * (0.5f + 0.5f * std::sin(phase)));
             u32 g = (u32)(255.0f * glow * (0.5f + 0.5f * std::sin(phase + 2.0943951f)));
             u32 b = (u32)(255.0f * glow * (0.5f + 0.5f * std::sin(phase + 4.1887902f)));
-            buf->buffer[j * buf->width + i] = (r << 16) | (g << 8) | b;
+            row[i] = (r << 16) | (g << 8) | b;
         }
     }
 }
