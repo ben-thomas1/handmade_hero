@@ -11,5 +11,6 @@ struct PCMSample {
     float right;
 };
 
-
-bool generate_sound(BlockCBuff<PCMSample> *samples, u32 n, u32 sample_rate);
+struct SoundState {
+    f32 phase = 0;
+};

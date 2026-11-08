@@ -85,6 +85,22 @@ inc = include_directories('src')
 
 subdir('src/game')
 
+# Debug builds load the game library at runtime and reload it when it is rebuilt.
+if get_option('buildtype') == 'debug'
+  exe_cpp_args += [
+    '-DHOT_RELOAD=1',
+    '-DGAME_LIBRARY_PATH="' + game.full_path() + '"',
+  ]
+  exe_link_with = []
+  exe_deps = [dependency('dl')]
+else
+  exe_cpp_args += [
+    '-DHOT_RELOAD=0',
+  ]
+  exe_link_with = [game]
+  exe_deps = []
+endif
+
 if host_machine.system() == 'linux'
   subdir('src/platform/linux')
 elif host_machine.system() == 'darwin'
@@ -95,8 +111,8 @@ endif
 
 executable('handmade_hero', platform_sources,
   include_directories : [inc, platform_inc],
-  link_with : game,
-  dependencies : platform_deps,
+  link_with : exe_link_with,
+  dependencies : platform_deps + exe_deps,
   cpp_args : cpp_args + exe_cpp_args,
   objcpp_args : cpp_args + exe_cpp_args,
   link_args : link_args + exe_link_args,

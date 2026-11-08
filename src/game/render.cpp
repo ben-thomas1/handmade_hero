@@ -1,11 +1,10 @@
-#include "game/backbuffer.hpp"
-#include "game/state.hpp"
+#include "game/game.hpp"
 
 #include <cmath>
 
 
 void
-render_to_buffer(BackBuffer *buf, State *state)
+game_render(BackBuffer *buf, State *state)
 {
     f32 time = 0.03f * (f32)state->frame;
 

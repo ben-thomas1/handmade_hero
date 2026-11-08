@@ -41,7 +41,7 @@ xdg_decoration_code = custom_target('xdg-decoration-code',
   command : [wayland_scanner, 'private-code', '@INPUT@', '@OUTPUT@'],
 )
 
-platform_sources = files('main.cpp', 'wayland.cpp', 'pipewire.cpp') + [
+platform_sources = files('../posix/game_code.cpp', 'main.cpp', 'wayland.cpp', 'pipewire.cpp') + [
   xdg_shell_header, xdg_shell_code,
   viewporter_header, viewporter_code,
   xdg_decoration_header, xdg_decoration_code,

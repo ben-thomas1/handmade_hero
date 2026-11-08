@@ -7,6 +7,6 @@ frameworks = dependency('appleframeworks', modules : [
   'Cocoa', 'QuartzCore', 'IOSurface', 'CoreGraphics', 'AudioToolbox',
 ])
 
-platform_sources = files('main.mm', 'cocoa.mm', 'coreaudio.cpp')
+platform_sources = files('../posix/game_code.cpp', 'main.mm', 'cocoa.mm', 'coreaudio.cpp')
 platform_deps = [frameworks]
 platform_inc = []

@@ -1,16 +1,15 @@
-#include "game/sound.hpp"
+#include "game/game.hpp"
 
 #include <cmath>
 #include <numbers>
 
 
-static float phase = 0;
-
-bool generate_sound(BlockCBuff<PCMSample> *dst, u32 n, u32 sample_rate) {
+bool game_generate_sound(State *state, BlockCBuff<PCMSample> *dst, u32 n, u32 sample_rate) {
     if (sample_rate == 0 || n > dst->remaining()) return false;
     PCMSample samples[256];
     f32 tau = 2.0f * std::numbers::pi_v<f32>;
     f32 step = tau * 440.0f / (f32)sample_rate;
+    f32 phase = state->sound.phase;
     while (n > 0) {
         u32 count = n < 256 ? n : 256;
         for (u32 i = 0; i < count; i++) {
@@ -22,5 +21,6 @@ bool generate_sound(BlockCBuff<PCMSample> *dst, u32 n, u32 sample_rate) {
         dst->push_block(samples, count);
         n -= count;
     }
+    state->sound.phase = phase;
     return true;
 }
