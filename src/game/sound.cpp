@@ -4,9 +4,9 @@
 #include <numbers>
 
 
-bool game_generate_sound(State *state, BlockCBuff<PCMSample> *dst, u32 n, u32 sample_rate) {
+bool game_generate_sound(State *state, Ring<AudioFrame> *dst, u32 n, u32 sample_rate) {
     if (sample_rate == 0 || n > dst->remaining()) return false;
-    PCMSample samples[256];
+    AudioFrame samples[256];
     f32 tau = 2.0f * std::numbers::pi_v<f32>;
     f32 step = tau * 440.0f / (f32)sample_rate;
     f32 phase = state->sound.phase;

@@ -169,7 +169,7 @@ Window::init(u32 buffer_width, u32 buffer_height)
         [this->display_link addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
 
         for (u32 i = 0; i < 2; i++) {
-            BackBuffer *buffer = &this->back_buffers[i];
+            PixelBuffer *buffer = &this->back_buffers[i];
             buffer->width = buffer_width;
             buffer->height = buffer_height;
             size_t pitch = IOSurfaceAlignProperty(kIOSurfaceBytesPerRow,
@@ -350,10 +350,10 @@ Window::ready_to_render() const
     return !this->close_requested && this->frame_ready && !IOSurfaceIsInUse(this->surfaces[this->render_index]);
 }
 
-BackBuffer *
+PixelBuffer *
 Window::back_buffer()
 {
-    BackBuffer *buffer = &this->back_buffers[this->render_index];
+    PixelBuffer *buffer = &this->back_buffers[this->render_index];
     IOSurfaceRef surface = this->surfaces[this->render_index];
     IOSurfaceLock(surface, 0, nullptr);
     buffer->buffer = (u32 *)IOSurfaceGetBaseAddress(surface);

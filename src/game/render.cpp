@@ -4,7 +4,7 @@
 
 
 void
-game_render(BackBuffer *buf, State *state)
+game_render(PixelBuffer *buf, State *state)
 {
     f32 time = 0.03f * (f32)state->frame;
 

@@ -3,3 +3,11 @@ CompileFlags:
   Add: [
     -std=c++26
   ]
+---
+# Headers here declare Objective-C classes; parse them as Objective-C++.
+If:
+  PathMatch: src/platform/macos/.*\.hpp
+CompileFlags:
+  Add: [
+    -xobjective-c++-header
+  ]

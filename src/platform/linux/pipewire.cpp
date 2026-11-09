@@ -1,5 +1,5 @@
 #include "platform/linux/pipewire.hpp"
-#include "game/sound.hpp"
+#include "common/config.hpp"
 
 #include <pipewire/pipewire.h>
 #include <spa/param/audio/format-utils.h>
@@ -83,39 +83,39 @@ make_stream_events()
 static const pw_stream_events STREAM_EVENTS = make_stream_events();
 
 bool
-audio_init(Audio *audio, AudioRead read, void *data)
+Audio::init(AudioRead reader, void *userdata)
 {
-    *audio = {};
-    if (read == nullptr) return false;
-    audio->read = read;
-    audio->data = data;
+    *this = {};
+    if (reader == nullptr) return false;
+    this->read = reader;
+    this->data = userdata;
     pw_init(nullptr, nullptr);
-    audio->initialized = true;
-    audio->loop = pw_thread_loop_new("handmade-hero-audio", nullptr);
-    if (audio->loop == nullptr) {
+    this->initialized = true;
+    this->loop = pw_thread_loop_new("handmade-hero-audio", nullptr);
+    if (this->loop == nullptr) {
         std::println(stderr, "Could not create the PipeWire thread loop");
-        audio_shutdown(audio);
+        this->free();
         return false;
     }
-    i32 result = pw_thread_loop_start(audio->loop);
+    i32 result = pw_thread_loop_start(this->loop);
     if (result < 0) {
         std::println(stderr, "Could not start PipeWire: {}", std::strerror(-result));
-        audio_shutdown(audio);
+        this->free();
         return false;
     }
-    audio->started = true;
-    audio_lock(audio);
-    audio->stream = pw_stream_new_simple(pw_thread_loop_get_loop(audio->loop), "Handmade Hero",
+    this->started = true;
+    this->lock();
+    this->stream = pw_stream_new_simple(pw_thread_loop_get_loop(this->loop), "Handmade Hero",
                                         pw_properties_new(PW_KEY_MEDIA_TYPE, "Audio",
                                                           PW_KEY_MEDIA_CATEGORY, "Playback",
                                                           PW_KEY_MEDIA_ROLE, "Game",
                                                           PW_KEY_NODE_NAME, "handmade_hero.audio",
                                                           PW_KEY_NODE_LATENCY, "256/48000", nullptr),
-                                        &STREAM_EVENTS, audio);
-    if (audio->stream == nullptr) {
+                                        &STREAM_EVENTS, this);
+    if (this->stream == nullptr) {
         std::println(stderr, "Could not create the PipeWire stream");
-        audio_unlock(audio);
-        audio_shutdown(audio);
+        this->unlock();
+        this->free();
         return false;
     }
 
@@ -131,63 +131,63 @@ audio_init(Audio *audio, AudioRead read, void *data)
 
     // Without RT_PROCESS, callbacks run with the thread-loop lock held.
     pw_stream_flags flags = (pw_stream_flags)(PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS);
-    result = pw_stream_connect(audio->stream, PW_DIRECTION_OUTPUT, PW_ID_ANY, flags, params, 1);
+    result = pw_stream_connect(this->stream, PW_DIRECTION_OUTPUT, PW_ID_ANY, flags, params, 1);
     if (result < 0) {
         std::println(stderr, "Could not connect PipeWire: {}", std::strerror(-result));
-        audio_unlock(audio);
-        audio_shutdown(audio);
+        this->unlock();
+        this->free();
         return false;
     }
 
     timespec deadline;
-    pw_thread_loop_get_time(audio->loop, &deadline, 5 * SPA_NSEC_PER_SEC);
-    while (!audio->ready && !audio->failed) {
-        result = pw_thread_loop_timed_wait_full(audio->loop, &deadline);
+    pw_thread_loop_get_time(this->loop, &deadline, 5 * SPA_NSEC_PER_SEC);
+    while (!this->ready && !this->failed) {
+        result = pw_thread_loop_timed_wait_full(this->loop, &deadline);
         if (result < 0) {
             std::println(stderr, "Timed out waiting for the PipeWire stream");
-            audio->failed = true;
+            this->failed = true;
         }
     }
-    bool ready = audio->ready && !audio->failed;
-    audio_unlock(audio);
-    if (!ready) audio_shutdown(audio);
+    bool ready = this->ready && !this->failed;
+    this->unlock();
+    if (!ready) this->free();
     return ready;
 }
 
 void
-audio_lock(Audio *audio)
+Audio::lock()
 {
-    pw_thread_loop_lock(audio->loop);
+    pw_thread_loop_lock(this->loop);
 }
 
 void
-audio_unlock(Audio *audio)
+Audio::unlock()
 {
-    pw_thread_loop_unlock(audio->loop);
+    pw_thread_loop_unlock(this->loop);
 }
 
 void
-audio_shutdown(Audio *audio)
+Audio::free()
 {
-    if (audio->loop != nullptr) {
-        audio_lock(audio);
-        audio->stopping = true;
-        audio_unlock(audio);
-        if (audio->started) pw_thread_loop_stop(audio->loop);
-        audio_lock(audio);
-        if (audio->stream != nullptr) pw_stream_destroy(audio->stream);
-        audio_unlock(audio);
-        pw_thread_loop_destroy(audio->loop);
+    if (this->loop != nullptr) {
+        this->lock();
+        this->stopping = true;
+        this->unlock();
+        if (this->started) pw_thread_loop_stop(this->loop);
+        this->lock();
+        if (this->stream != nullptr) pw_stream_destroy(this->stream);
+        this->unlock();
+        pw_thread_loop_destroy(this->loop);
     }
-    if (audio->initialized) {
+    if (this->initialized) {
         pw_deinit();
         // PipeWire's RT module uses libdbus; release its process-global caches last.
         dbus_shutdown();
     }
     #ifndef NDEBUG
-    if (audio->underrun_frames > 0) {
-        std::println(stderr, "Audio ring underrun: {} frames filled with silence", audio->underrun_frames);
+    if (this->underrun_frames > 0) {
+        std::println(stderr, "Audio ring underrun: {} frames filled with silence", this->underrun_frames);
     }
     #endif
-    *audio = {};
+    *this = {};
 }

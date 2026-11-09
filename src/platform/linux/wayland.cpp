@@ -47,7 +47,7 @@ static void
 enqueue_input_event(Window *window, InputEvent event)
 {
     // Stop rather than continue with a potentially missing key release.
-    if (!window->events.enqueue(event))
+    if (!window->events.push(event))
     {
         std::println(stderr, "Wayland input event queue full (capacity: {})", window->events.cap);
         window->close_requested = true;
@@ -408,7 +408,7 @@ Window::init(u32 buffer_width, u32 buffer_height)
 
     for (u32 i = 0; i < 2; i++)
     {
-        BackBuffer *buffer = &this->back_buffers[i];
+        PixelBuffer *buffer = &this->back_buffers[i];
         buffer->width = buffer_width;
         buffer->height = buffer_height;
         buffer->pitch = buffer_width * buffer->bytes_per_pixel;
@@ -441,7 +441,7 @@ Window::process_events(Input *input, i32 timeout_ms) {
     {
         while (!this->events.empty())
         {
-            InputEvent event = this->events.dequeue();
+            InputEvent event = this->events.pop();
             input->has_input = true;
             timeout_ms = 0;
             switch (event.type)
@@ -572,7 +572,7 @@ Window::ready_to_render() const
     return !this->close_requested && this->frame_ready && !this->buffer_busy[this->render_index];
 }
 
-BackBuffer *
+PixelBuffer *
 Window::back_buffer()
 {
     return &this->back_buffers[this->render_index];
@@ -609,7 +609,7 @@ Window::free()
     }
     for (u32 i = 0; i < 2; i++)
     {
-        BackBuffer *buffer = &this->back_buffers[i];
+        PixelBuffer *buffer = &this->back_buffers[i];
         wl_buffer_destroy(this->wayland_buffers[i]);
         munmap(buffer->buffer, (size_t)buffer->pitch * buffer->height);
     }

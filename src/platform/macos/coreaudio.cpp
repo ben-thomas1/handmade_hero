@@ -1,5 +1,5 @@
 #include "platform/macos/coreaudio.hpp"
-#include "game/sound.hpp"
+#include "common/config.hpp"
 
 #include <AudioToolbox/AudioToolbox.h>
 
@@ -17,22 +17,22 @@ on_render(void *data, AudioUnitRenderActionFlags *, const AudioTimeStamp *, UInt
     u32 stride = AUDIO_CHANNELS * sizeof(f32);
     u32 frames = samples->mDataByteSize / stride;
     if (frame_count < frames) frames = frame_count;
-    audio_lock(audio);
+    audio->lock();
     u32 copied = audio->read(audio->data, samples->mData, frames);
     if (copied > frames) copied = frames;
     audio->underrun_frames += frames - copied;
-    audio_unlock(audio);
+    audio->unlock();
     std::memset((u8 *)samples->mData + copied * stride, 0, (frames - copied) * stride);
     return noErr;
 }
 
 bool
-audio_init(Audio *audio, AudioRead read, void *data)
+Audio::init(AudioRead reader, void *userdata)
 {
-    *audio = {};
-    if (read == nullptr) return false;
-    audio->read = read;
-    audio->data = data;
+    *this = {};
+    if (reader == nullptr) return false;
+    this->read = reader;
+    this->data = userdata;
 
     AudioComponentDescription description = {
         .componentType = kAudioUnitType_Output,
@@ -46,10 +46,10 @@ audio_init(Audio *audio, AudioRead read, void *data)
         std::println(stderr, "Could not find the default CoreAudio output");
         return false;
     }
-    OSStatus result = AudioComponentInstanceNew(component, &audio->unit);
+    OSStatus result = AudioComponentInstanceNew(component, &this->unit);
     if (result != noErr) {
         std::println(stderr, "Could not create the CoreAudio output unit: {}", result);
-        audio_shutdown(audio);
+        this->free();
         return false;
     }
 
@@ -65,64 +65,64 @@ audio_init(Audio *audio, AudioRead read, void *data)
         .mBitsPerChannel = 32,
         .mReserved = 0,
     };
-    result = AudioUnitSetProperty(audio->unit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0,
+    result = AudioUnitSetProperty(this->unit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0,
                                   &format, sizeof(format));
     if (result != noErr) {
         std::println(stderr, "Could not set the CoreAudio stream format: {}", result);
-        audio_shutdown(audio);
+        this->free();
         return false;
     }
 
-    AURenderCallbackStruct callback = { .inputProc = on_render, .inputProcRefCon = audio };
-    result = AudioUnitSetProperty(audio->unit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, 0,
+    AURenderCallbackStruct callback = { .inputProc = on_render, .inputProcRefCon = this };
+    result = AudioUnitSetProperty(this->unit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, 0,
                                   &callback, sizeof(callback));
     if (result != noErr) {
         std::println(stderr, "Could not set the CoreAudio render callback: {}", result);
-        audio_shutdown(audio);
+        this->free();
         return false;
     }
 
-    result = AudioUnitInitialize(audio->unit);
+    result = AudioUnitInitialize(this->unit);
     if (result != noErr) {
         std::println(stderr, "Could not initialize CoreAudio: {}", result);
-        audio_shutdown(audio);
+        this->free();
         return false;
     }
-    audio->initialized = true;
+    this->initialized = true;
 
-    result = AudioOutputUnitStart(audio->unit);
+    result = AudioOutputUnitStart(this->unit);
     if (result != noErr) {
         std::println(stderr, "Could not start CoreAudio: {}", result);
-        audio_shutdown(audio);
+        this->free();
         return false;
     }
-    audio->started = true;
+    this->started = true;
     return true;
 }
 
 void
-audio_lock(Audio *audio)
+Audio::lock()
 {
-    os_unfair_lock_lock(&audio->lock);
+    os_unfair_lock_lock(&this->ring_lock);
 }
 
 void
-audio_unlock(Audio *audio)
+Audio::unlock()
 {
-    os_unfair_lock_unlock(&audio->lock);
+    os_unfair_lock_unlock(&this->ring_lock);
 }
 
 void
-audio_shutdown(Audio *audio)
+Audio::free()
 {
     // Stopping waits for any render callback in flight.
-    if (audio->started) AudioOutputUnitStop(audio->unit);
-    if (audio->initialized) AudioUnitUninitialize(audio->unit);
-    if (audio->unit != nullptr) AudioComponentInstanceDispose(audio->unit);
+    if (this->started) AudioOutputUnitStop(this->unit);
+    if (this->initialized) AudioUnitUninitialize(this->unit);
+    if (this->unit != nullptr) AudioComponentInstanceDispose(this->unit);
     #ifndef NDEBUG
-    if (audio->underrun_frames > 0) {
-        std::println(stderr, "Audio ring underrun: {} frames filled with silence", audio->underrun_frames);
+    if (this->underrun_frames > 0) {
+        std::println(stderr, "Audio ring underrun: {} frames filled with silence", this->underrun_frames);
     }
     #endif
-    *audio = {};
+    *this = {};
 }

@@ -1,35 +1,21 @@
 #include "platform/linux/wayland.hpp"
-#include "game/input.hpp"
-#include "game/sound.hpp"
 #include "platform/linux/pipewire.hpp"
-#include "base/block_cbuff.hpp"
-#include "game/state.hpp"
-#include "game/game.hpp"
 #include "platform/posix/game_code.hpp"
-#include "base/types.hpp"
+#include "game/game.hpp"
+#include "common/config.hpp"
+#include "common/ring.hpp"
+#include "common/types.hpp"
 
 #include <print>
-#include <stdint.h>
-
-struct Config {
-    char name[32] = "Handmade Hero";
-    u32 screen_width  = 640;
-    u32 screen_height = 480;
-};
 
 static u32
 read_sound(void *data, void *dst, u32 frame_count)
 {
-    BlockCBuff<PCMSample> *samples = (BlockCBuff<PCMSample> *)data;
+    Ring<AudioFrame> *samples = (Ring<AudioFrame> *)data;
     u32 count = frame_count < samples->len ? frame_count : samples->len;
-    samples->pop_block((PCMSample *)dst, count);
+    samples->pop_block((AudioFrame *)dst, count);
     return count;
 }
-
-
-#define BUFFER_SIZE (2 * AUDIO_SAMPLE_RATE)
-#define AUDIO_LEADING_FRAMES 2048
-#define AUDIO_STARTUP_FRAMES 8192
 
 
 i32
@@ -48,18 +34,17 @@ main(i32 argc, char **argv)
     Window window;
     window.init(conf.screen_width, conf.screen_height);
     
-    PCMSample samples[BUFFER_SIZE];
-    BlockCBuff<PCMSample> sound_buf;
-    sound_buf.init(samples, BUFFER_SIZE);
+    AudioFrame samples[AUDIO_BUFFER_FRAMES];
+    Ring<AudioFrame> sound_buf;
+    sound_buf.init(samples, AUDIO_BUFFER_FRAMES);
     State state;
-    // Extra startup audio covers cold debug code and first-frame initialization.
     if (!game.generate_sound(&state, &sound_buf, AUDIO_STARTUP_FRAMES, AUDIO_SAMPLE_RATE)) {
         window.free();
         game.free();
         return 1;
     }
     Audio audio;
-    if (!audio_init(&audio, read_sound, &sound_buf)) {
+    if (!audio.init(read_sound, &sound_buf)) {
         window.free();
         game.free();
         return 1;
@@ -75,12 +60,12 @@ main(i32 argc, char **argv)
 
         game.update(&input, &state);
 
-        audio_lock(&audio);
+        audio.lock();
         if (sound_buf.len < AUDIO_LEADING_FRAMES) {
             u32 frames = AUDIO_LEADING_FRAMES - sound_buf.len;
             if (!game.generate_sound(&state, &sound_buf, frames, AUDIO_SAMPLE_RATE)) state.running = false;
         }
-        audio_unlock(&audio);
+        audio.unlock();
 
         if (window.ready_to_render()) {
             game.render(window.back_buffer(), &state);
@@ -90,7 +75,7 @@ main(i32 argc, char **argv)
         }
     }
     // The audio thread reads sound_buf on this stack, so stop it in every build.
-    audio_shutdown(&audio);
+    audio.free();
     #ifndef NDEBUG
     window.free();
     game.free();
