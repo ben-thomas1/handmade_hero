@@ -1,14 +1,11 @@
-// TODO: memcpy all these buffers
-
 #pragma once
 
-#include "common/types.hpp"
+#include "common/types.h"
 
 #include <cassert>
 #include <cstring>
 
 
-// First-in first-out over caller-owned storage of cap elements.
 template <typename T>
 struct Ring {
     T *data;
@@ -18,15 +15,10 @@ struct Ring {
     u32 cap;
 
     void init(T *storage, u32 capacity);
-    // Returns false when full.
     bool push(T value);
-    // Precondition: !empty().
     T pop();
-    // Returns T{} when empty.
     T peek() const;
-    // Precondition: n <= remaining().
     void push_block(const T *src, u32 n);
-    // Precondition: n <= len.
     void pop_block(T *dst, u32 n);
     bool empty() const;
     u32 remaining() const;

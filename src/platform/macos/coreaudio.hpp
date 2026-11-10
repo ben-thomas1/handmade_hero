@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/types.hpp"
+#include "common/types.h"
 
 #include <os/lock.h>
 
@@ -20,7 +20,8 @@ struct Audio {
     u64 underrun_frames;
 
     // Keep Audio and the reader's userdata alive until free() returns.
-    bool init(AudioRead reader, void *userdata);
+    // Preconditions: sample_rate > 0.
+    bool init(AudioRead reader, void *userdata, u32 sample_rate);
     // Hold this lock around main-thread access to the ring shared with the callback.
     void lock();
     void unlock();

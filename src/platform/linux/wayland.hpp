@@ -1,7 +1,8 @@
 #pragma once
 
-#include "game/game.hpp"
 #include "common/ring.hpp"
+#include "game/game.hpp"
+
 
 enum InputEventType : u8 {
     INPUT_EVENT_KEY,

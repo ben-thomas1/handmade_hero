@@ -1,12 +1,15 @@
+#include "common/config.hpp"
+#include "common/ring.hpp"
+#include "common/types.h"
+#include "game/game.hpp"
 #include "platform/macos/cocoa.hpp"
 #include "platform/macos/coreaudio.hpp"
 #include "platform/posix/game_code.hpp"
-#include "game/game.hpp"
-#include "common/config.hpp"
-#include "common/ring.hpp"
-#include "common/types.hpp"
 
+#include <cassert>
+#include <cstdlib>
 #include <print>
+
 
 static u32
 read_sound(void *data, void *dst, u32 frame_count)
@@ -24,6 +27,9 @@ main(i32 argc, char **argv)
     (void)argc; (void)argv;
 
     Config conf;
+    assert(conf.audio_sample_rate > 0);
+    assert(conf.audio_startup_frames <= conf.audio_buffer_frames);
+    assert(conf.audio_leading_frames <= conf.audio_buffer_frames);
 
     std::println("Running {}", conf.name);
     std::println("Render dims: {} x {}", conf.screen_width, conf.screen_height);
@@ -34,17 +40,24 @@ main(i32 argc, char **argv)
     Window window;
     window.init(conf.screen_width, conf.screen_height);
     
-    AudioFrame samples[AUDIO_BUFFER_FRAMES];
+    AudioFrame *samples = (AudioFrame *)std::malloc((size_t)conf.audio_buffer_frames * sizeof(AudioFrame));
+    if (samples == nullptr) {
+        window.free();
+        game.free();
+        return 1;
+    }
     Ring<AudioFrame> sound_buf;
-    sound_buf.init(samples, AUDIO_BUFFER_FRAMES);
+    sound_buf.init(samples, conf.audio_buffer_frames);
     State state;
-    if (!game.generate_sound(&state, &sound_buf, AUDIO_STARTUP_FRAMES, AUDIO_SAMPLE_RATE)) {
+    if (!game.generate_sound(&state, &sound_buf, conf.audio_startup_frames, conf.audio_sample_rate)) {
+        std::free(samples);
         window.free();
         game.free();
         return 1;
     }
     Audio audio;
-    if (!audio.init(read_sound, &sound_buf)) {
+    if (!audio.init(read_sound, &sound_buf, conf.audio_sample_rate)) {
+        std::free(samples);
         window.free();
         game.free();
         return 1;
@@ -55,15 +68,15 @@ main(i32 argc, char **argv)
     while (state.running) {
         game.reload_if_changed();
         input.begin_frame();
-        window.process_events(&input, window.ready_to_render() ? 0 : 8);
+        window.process_events(&input, window.ready_to_render() ? 0 : conf.event_timeout_ms);
         if (input.has_input) std::println("{}", input);
 
         game.update(&input, &state);
 
         audio.lock();
-        if (sound_buf.len < AUDIO_LEADING_FRAMES) {
-            u32 frames = AUDIO_LEADING_FRAMES - sound_buf.len;
-            if (!game.generate_sound(&state, &sound_buf, frames, AUDIO_SAMPLE_RATE)) state.running = false;
+        if (sound_buf.len < conf.audio_leading_frames) {
+            u32 frames = conf.audio_leading_frames - sound_buf.len;
+            if (!game.generate_sound(&state, &sound_buf, frames, conf.audio_sample_rate)) state.running = false;
         }
         audio.unlock();
 
@@ -77,6 +90,7 @@ main(i32 argc, char **argv)
     // The audio thread reads sound_buf on this stack, so stop it in every build.
     audio.free();
     #ifndef NDEBUG
+    std::free(samples);
     window.free();
     game.free();
     #endif

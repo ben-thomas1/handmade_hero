@@ -1,6 +1,7 @@
 #pragma once
 
-#include "common/types.hpp"
+#include "common/types.h"
+
 
 struct pw_thread_loop;
 struct pw_stream;
@@ -13,6 +14,7 @@ struct Audio {
     pw_stream *stream;
     AudioRead read;
     void *data;
+    u32 sample_rate;
     bool initialized;
     bool started;
     bool ready;
@@ -21,7 +23,8 @@ struct Audio {
     u64 underrun_frames;
 
     // Keep Audio and the reader's userdata alive until free() returns.
-    bool init(AudioRead reader, void *userdata);
+    // Preconditions: sample_rate > 0.
+    bool init(AudioRead reader, void *userdata, u32 sample_rate, u32 latency_frames);
     // Hold this lock around main-thread access to the ring shared with the callback.
     void lock();
     void unlock();

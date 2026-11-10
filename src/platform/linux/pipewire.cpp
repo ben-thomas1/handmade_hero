@@ -1,10 +1,14 @@
 #include "platform/linux/pipewire.hpp"
+
+#include "common/types.h"
 #include "common/config.hpp"
 
 #include <pipewire/pipewire.h>
 #include <spa/param/audio/format-utils.h>
 #include <dbus/dbus.h>
 
+#include <cassert>
+#include <cstdio>
 #include <cstring>
 #include <print>
 
@@ -26,7 +30,7 @@ on_process(void *data)
         return;
     }
 
-    u32 stride = AUDIO_CHANNELS * sizeof(f32);
+    u32 stride = Config::AUDIO_CHANNELS * sizeof(f32);
     u32 frame_count = samples->maxsize / stride;
     if (buffer->requested > 0 && buffer->requested < frame_count) frame_count = (u32)buffer->requested;
     u32 copied = audio->read(audio->data, samples->data, frame_count);
@@ -62,7 +66,7 @@ on_param_changed(void *data, uint32_t id, const spa_pod *param)
     Audio *audio = (Audio *)data;
     spa_audio_info_raw format = {};
     if (spa_format_audio_raw_parse(param, &format) < 0 || format.format != SPA_AUDIO_FORMAT_F32 ||
-        format.rate != AUDIO_SAMPLE_RATE || format.channels != AUDIO_CHANNELS) {
+        format.rate != audio->sample_rate || format.channels != Config::AUDIO_CHANNELS) {
         std::println(stderr, "PipeWire negotiated an unsupported audio format");
         audio->failed = true;
         pw_thread_loop_signal(audio->loop, false);
@@ -83,12 +87,14 @@ make_stream_events()
 static const pw_stream_events STREAM_EVENTS = make_stream_events();
 
 bool
-Audio::init(AudioRead reader, void *userdata)
+Audio::init(AudioRead reader, void *userdata, u32 sample_rate, u32 latency_frames)
 {
+    assert(sample_rate > 0);
     *this = {};
     if (reader == nullptr) return false;
     this->read = reader;
     this->data = userdata;
+    this->sample_rate = sample_rate;
     pw_init(nullptr, nullptr);
     this->initialized = true;
     this->loop = pw_thread_loop_new("handmade-hero-audio", nullptr);
@@ -104,13 +110,15 @@ Audio::init(AudioRead reader, void *userdata)
         return false;
     }
     this->started = true;
+    char latency[32];
+    std::snprintf(latency, sizeof(latency), "%u/%u", latency_frames, sample_rate);
     this->lock();
     this->stream = pw_stream_new_simple(pw_thread_loop_get_loop(this->loop), "Handmade Hero",
                                         pw_properties_new(PW_KEY_MEDIA_TYPE, "Audio",
                                                           PW_KEY_MEDIA_CATEGORY, "Playback",
                                                           PW_KEY_MEDIA_ROLE, "Game",
                                                           PW_KEY_NODE_NAME, "handmade_hero.audio",
-                                                          PW_KEY_NODE_LATENCY, "256/48000", nullptr),
+                                                          PW_KEY_NODE_LATENCY, latency, nullptr),
                                         &STREAM_EVENTS, this);
     if (this->stream == nullptr) {
         std::println(stderr, "Could not create the PipeWire stream");
@@ -123,8 +131,8 @@ Audio::init(AudioRead reader, void *userdata)
     spa_pod_builder builder = SPA_POD_BUILDER_INIT(pod_buffer, sizeof(pod_buffer));
     spa_audio_info_raw format = {};
     format.format = SPA_AUDIO_FORMAT_F32;
-    format.rate = AUDIO_SAMPLE_RATE;
-    format.channels = AUDIO_CHANNELS;
+    format.rate = sample_rate;
+    format.channels = Config::AUDIO_CHANNELS;
     format.position[0] = SPA_AUDIO_CHANNEL_FL;
     format.position[1] = SPA_AUDIO_CHANNEL_FR;
     const spa_pod *params[] = { spa_format_audio_raw_build(&builder, SPA_PARAM_EnumFormat, &format) };

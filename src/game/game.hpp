@@ -4,7 +4,7 @@
 
 #include "common/config.hpp"
 #include "common/ring.hpp"
-#include "common/types.hpp"
+#include "common/types.h"
 
 #include <format>
 
@@ -15,13 +15,6 @@ struct PixelBuffer {
     // Bytes from the start of one row to the next; may exceed width * bytes_per_pixel.
     u32 pitch;
     u8 bytes_per_pixel = 4;
-};
-
-// OPTIMISE: Pack to bits
-struct InputButton {
-    bool is_down = false;
-    bool pressed = false;
-    bool released = false;
 };
 
 enum Key : u8 {
@@ -52,6 +45,13 @@ enum MouseButton : u8 {
     MOUSE_MIDDLE,
     MOUSE_RIGHT,
     MOUSE_COUNT,
+};
+
+// OPTIMISE: Pack to bits
+struct InputButton {
+    bool is_down = false;
+    bool pressed = false;
+    bool released = false;
 };
 
 struct Input {
@@ -95,6 +95,7 @@ struct AudioFrame {
     f32 left;
     f32 right;
 };
+static_assert(sizeof(AudioFrame) == Config::AUDIO_CHANNELS * sizeof(f32));
 
 struct SoundState {
     f32 phase = 0;

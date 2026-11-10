@@ -1,8 +1,10 @@
 #include "platform/macos/coreaudio.hpp"
+
 #include "common/config.hpp"
 
 #include <AudioToolbox/AudioToolbox.h>
 
+#include <cassert>
 #include <cstring>
 #include <print>
 
@@ -14,7 +16,7 @@ on_render(void *data, AudioUnitRenderActionFlags *, const AudioTimeStamp *, UInt
     Audio *audio = (Audio *)data;
     AudioBuffer *samples = &buffers->mBuffers[0];
 
-    u32 stride = AUDIO_CHANNELS * sizeof(f32);
+    u32 stride = Config::AUDIO_CHANNELS * sizeof(f32);
     u32 frames = samples->mDataByteSize / stride;
     if (frame_count < frames) frames = frame_count;
     audio->lock();
@@ -27,8 +29,9 @@ on_render(void *data, AudioUnitRenderActionFlags *, const AudioTimeStamp *, UInt
 }
 
 bool
-Audio::init(AudioRead reader, void *userdata)
+Audio::init(AudioRead reader, void *userdata, u32 sample_rate)
 {
+    assert(sample_rate > 0);
     *this = {};
     if (reader == nullptr) return false;
     this->read = reader;
@@ -55,13 +58,13 @@ Audio::init(AudioRead reader, void *userdata)
 
     // The output unit converts to the device's own rate and layout.
     AudioStreamBasicDescription format = {
-        .mSampleRate = AUDIO_SAMPLE_RATE,
+        .mSampleRate = (Float64)sample_rate,
         .mFormatID = kAudioFormatLinearPCM,
         .mFormatFlags = kAudioFormatFlagIsFloat | kAudioFormatFlagIsPacked,
-        .mBytesPerPacket = AUDIO_CHANNELS * sizeof(f32),
+        .mBytesPerPacket = Config::AUDIO_CHANNELS * sizeof(f32),
         .mFramesPerPacket = 1,
-        .mBytesPerFrame = AUDIO_CHANNELS * sizeof(f32),
-        .mChannelsPerFrame = AUDIO_CHANNELS,
+        .mBytesPerFrame = Config::AUDIO_CHANNELS * sizeof(f32),
+        .mChannelsPerFrame = Config::AUDIO_CHANNELS,
         .mBitsPerChannel = 32,
         .mReserved = 0,
     };

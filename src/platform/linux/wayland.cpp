@@ -1,4 +1,5 @@
 #include "platform/linux/wayland.hpp"
+
 #include "xdg-shell-client-protocol.h"
 #include "xdg-decoration-client-protocol.h"
 #include "viewporter-client-protocol.h"
