@@ -1,6 +1,7 @@
 CC = clang
 CXX = clang++
-export CC CXX
+OBJCXX = clang++
+export CC CXX OBJCXX
 
 .PHONY: all debug release raddbg clean nuke install
 all: debug
