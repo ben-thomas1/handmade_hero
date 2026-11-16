@@ -4,11 +4,25 @@
 
 #include <wayland-client.h>
 
+#include <algorithm>
 #include <cstring>
 #include <linux/input-event-codes.h>
 #include <sys/mman.h>
 #include <unistd.h>
 
+
+// Ups without a down are ignored.
+static void
+set_button(InputButton *button, bool down)
+{
+    if (down && !button->held) {
+        button->pressed = true;
+        button->held = true;
+    } else if (!down && button->held) {
+        button->released = true;
+        button->held = false;
+    }
+}
 
 static void
 on_ping(void *, xdg_wm_base *shell, uint32_t serial)
@@ -69,23 +83,28 @@ on_enter(void *, wl_keyboard *, uint32_t, wl_surface *, wl_array *)
 static void
 on_leave(void *data, wl_keyboard *, uint32_t, wl_surface *)
 {
-    // Key releases after losing focus never arrive.
+    // Releases after losing focus never arrive.
     Input *input = &((Window *)data)->input;
-    input->up = input->down = input->left = input->right = false;
+    for (u32 i = 0; i < HH_KEY_COUNT; i++) set_button(&input->keys[i], false);
 }
 
 static void
-on_key(void *data, wl_keyboard *, uint32_t, uint32_t, uint32_t key, uint32_t state)
+on_key(void *data, wl_keyboard *, uint32_t, uint32_t, uint32_t code, uint32_t state)
 {
-    Input *input = &((Window *)data)->input;
-    bool down = state == WL_KEYBOARD_KEY_STATE_PRESSED;
-    switch (key) {
-        case KEY_W: case KEY_UP:    input->up    = down; break;
-        case KEY_S: case KEY_DOWN:  input->down  = down; break;
-        case KEY_A: case KEY_LEFT:  input->left  = down; break;
-        case KEY_D: case KEY_RIGHT: input->right = down; break;
-        case KEY_ESC:               input->quit  = true; break;
+    Key key;
+    switch (code) {
+        case KEY_W:        key = HH_KEY_W;        break;
+        case KEY_S:        key = HH_KEY_S;        break;
+        case KEY_A:        key = HH_KEY_A;        break;
+        case KEY_D:        key = HH_KEY_D;        break;
+        case KEY_UP:       key = HH_KEY_UP;       break;
+        case KEY_DOWN:     key = HH_KEY_DOWN;     break;
+        case KEY_LEFT:     key = HH_KEY_LEFT;     break;
+        case KEY_RIGHT:    key = HH_KEY_RIGHT;    break;
+        case KEY_Q:        key = HH_KEY_Q;        break;
+        default: return;
     }
+    set_button(&((Window *)data)->input.keys[key], state == WL_KEYBOARD_KEY_STATE_PRESSED);
 }
 
 static void
@@ -103,10 +122,68 @@ static const wl_keyboard_listener KEYBOARD_LISTENER = {
 };
 
 static void
+on_pointer_enter(void *data, wl_pointer *, uint32_t, wl_surface *, wl_fixed_t x, wl_fixed_t y)
+{
+    Window *window = (Window *)data;
+    window->pointer_x = wl_fixed_to_double(x);
+    window->pointer_y = wl_fixed_to_double(y);
+}
+
+static void
+on_pointer_leave(void *, wl_pointer *, uint32_t, wl_surface *)
+{
+}
+
+static void
+on_pointer_motion(void *data, wl_pointer *, uint32_t, wl_fixed_t x, wl_fixed_t y)
+{
+    Window *window = (Window *)data;
+    window->pointer_x = wl_fixed_to_double(x);
+    window->pointer_y = wl_fixed_to_double(y);
+}
+
+static void
+on_pointer_button(void *data, wl_pointer *, uint32_t, uint32_t, uint32_t button, uint32_t state)
+{
+    // Presses only arrive over the surface; the compositor sends the release even if the pointer has left.
+    Key key;
+    switch (button) {
+        case BTN_LEFT:   key = HH_KEY_MOUSE_LEFT;   break;
+        case BTN_RIGHT:  key = HH_KEY_MOUSE_RIGHT;  break;
+        case BTN_MIDDLE: key = HH_KEY_MOUSE_MIDDLE; break;
+        default: return;
+    }
+    set_button(&((Window *)data)->input.keys[key], state == WL_POINTER_BUTTON_STATE_PRESSED);
+}
+
+static void
+on_pointer_axis(void *, wl_pointer *, uint32_t, uint32_t, wl_fixed_t)
+{
+}
+
+static const wl_pointer_listener POINTER_LISTENER = {
+    .enter = on_pointer_enter,
+    .leave = on_pointer_leave,
+    .motion = on_pointer_motion,
+    .button = on_pointer_button,
+    .axis = on_pointer_axis,
+    .frame = nullptr,
+    .axis_source = nullptr,
+    .axis_stop = nullptr,
+    .axis_discrete = nullptr,
+    .axis_value120 = nullptr,
+    .axis_relative_direction = nullptr,
+    .warp = nullptr,
+};
+
+static void
 on_seat_capabilities(void *data, wl_seat *seat, uint32_t capabilities)
 {
     if (capabilities & WL_SEAT_CAPABILITY_KEYBOARD) {
         wl_keyboard_add_listener(wl_seat_get_keyboard(seat), &KEYBOARD_LISTENER, data);
+    }
+    if (capabilities & WL_SEAT_CAPABILITY_POINTER) {
+        wl_pointer_add_listener(wl_seat_get_pointer(seat), &POINTER_LISTENER, data);
     }
 }
 
@@ -173,7 +250,16 @@ Window::init(u32 width, u32 height)
 void
 Window::process_events(Input *out)
 {
+    for (u32 i = 0; i < HH_KEY_COUNT; i++) {
+        this->input.keys[i].pressed = false;
+        this->input.keys[i].released = false;
+    }
+
     wl_display_roundtrip(this->display);
+
+    // The surface is the backbuffer's size at scale 1, so surface coordinates are backbuffer pixels.
+    this->input.mouse_x = (i32)std::clamp(this->pointer_x, 0.0, (f64)(this->backbuffer.width - 1));
+    this->input.mouse_y = (i32)std::clamp(this->pointer_y, 0.0, (f64)(this->backbuffer.height - 1));
     *out = this->input;
 }
 

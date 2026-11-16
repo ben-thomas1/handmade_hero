@@ -4,8 +4,22 @@
 #import <QuartzCore/QuartzCore.h>
 #include <Carbon/Carbon.h>
 
+#include <algorithm>
 #include <cstdlib>
 
+
+// Repeated downs (held keys auto-repeat) and ups without a down are ignored.
+static void
+set_button(InputButton *button, bool down)
+{
+    if (down && !button->held) {
+        button->pressed = true;
+        button->held = true;
+    } else if (!down && button->held) {
+        button->released = true;
+        button->held = false;
+    }
+}
 
 void
 Window::init(u32 width, u32 height)
@@ -24,6 +38,11 @@ Window::init(u32 width, u32 height)
     [[NSNotificationCenter defaultCenter] addObserverForName:NSWindowWillCloseNotification object:this->window
                                                        queue:nil usingBlock:^(NSNotification *) {
         this->input.quit = true;
+    }];
+    // Releases after losing focus go to whichever app has it now.
+    [[NSNotificationCenter defaultCenter] addObserverForName:NSWindowDidResignKeyNotification object:this->window
+                                                       queue:nil usingBlock:^(NSNotification *) {
+        for (u32 i = 0; i < HH_KEY_COUNT; i++) set_button(&this->input.keys[i], false);
     }];
 
     // The backbuffer is shown as the contents of the view's layer, stretched to fit.
@@ -51,26 +70,67 @@ Window::init(u32 width, u32 height)
 void
 Window::process_events(Input *out)
 {
+    for (u32 i = 0; i < HH_KEY_COUNT; i++) {
+        this->input.keys[i].pressed = false;
+        this->input.keys[i].released = false;
+    }
+
     @autoreleasepool {
+        NSView *view = this->window.contentView;
         while (true) {
             NSEvent *event = [NSApp nextEventMatchingMask:NSEventMaskAny untilDate:nil
                                                    inMode:NSDefaultRunLoopMode dequeue:YES];
             if (event == nil) break;
 
-            if (event.type == NSEventTypeKeyDown || event.type == NSEventTypeKeyUp) {
-                bool down = event.type == NSEventTypeKeyDown;
-                switch (event.keyCode) {
-                    case kVK_ANSI_W: case kVK_UpArrow:    this->input.up    = down; break;
-                    case kVK_ANSI_S: case kVK_DownArrow:  this->input.down  = down; break;
-                    case kVK_ANSI_A: case kVK_LeftArrow:  this->input.left  = down; break;
-                    case kVK_ANSI_D: case kVK_RightArrow: this->input.right = down; break;
-                    case kVK_Escape:                      this->input.quit  = true; break;
+            NSEventType type = event.type;
+            bool mouse_down = type == NSEventTypeLeftMouseDown || type == NSEventTypeRightMouseDown ||
+                              type == NSEventTypeOtherMouseDown;
+            bool mouse_up = type == NSEventTypeLeftMouseUp || type == NSEventTypeRightMouseUp ||
+                            type == NSEventTypeOtherMouseUp;
+            if (mouse_down || mouse_up) {
+                Key key = HH_KEY_COUNT;
+                switch (event.buttonNumber) {
+                    case 0: key = HH_KEY_MOUSE_LEFT;   break;
+                    case 1: key = HH_KEY_MOUSE_RIGHT;  break;
+                    case 2: key = HH_KEY_MOUSE_MIDDLE; break;
                 }
-                // Not forwarded: AppKit beeps at key events nothing handles.
+                // Presses on the title bar are AppKit's; releases always count so buttons can't stick.
+                NSPoint point = [view convertPoint:event.locationInWindow fromView:nil];
+                if (key != HH_KEY_COUNT && (mouse_up || NSPointInRect(point, view.bounds))) {
+                    set_button(&this->input.keys[key], mouse_down);
+                }
+            }
+
+            // Key events aren't forwarded: AppKit beeps at key events nothing handles.
+            if (type != NSEventTypeKeyDown && type != NSEventTypeKeyUp) {
+                [NSApp sendEvent:event];
                 continue;
             }
-            [NSApp sendEvent:event];
+
+            Key key;
+            switch (event.keyCode) {
+                case kVK_ANSI_W:        key = HH_KEY_W;        break;
+                case kVK_ANSI_S:        key = HH_KEY_S;        break;
+                case kVK_ANSI_A:        key = HH_KEY_A;        break;
+                case kVK_ANSI_D:        key = HH_KEY_D;        break;
+                case kVK_UpArrow:       key = HH_KEY_UP;       break;
+                case kVK_DownArrow:     key = HH_KEY_DOWN;     break;
+                case kVK_LeftArrow:     key = HH_KEY_LEFT;     break;
+                case kVK_RightArrow:    key = HH_KEY_RIGHT;    break;
+                case kVK_ANSI_Q:        key = HH_KEY_Q;        break;
+                default: continue;
+            }
+
+            set_button(&this->input.keys[key], type == NSEventTypeKeyDown);
         }
+
+        // The view's origin is bottom-left and the backbuffer is stretched to fill it.
+        NSPoint mouse = [view convertPoint:this->window.mouseLocationOutsideOfEventStream fromView:nil];
+        NSSize size = view.bounds.size;
+        f64 x = mouse.x / size.width * this->backbuffer.width;
+        f64 y = (size.height - mouse.y) / size.height * this->backbuffer.height;
+        this->input.mouse_x = (i32)std::clamp(x, 0.0, (f64)(this->backbuffer.width - 1));
+        this->input.mouse_y = (i32)std::clamp(y, 0.0, (f64)(this->backbuffer.height - 1));
     }
     *out = this->input;
 }

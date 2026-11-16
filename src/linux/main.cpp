@@ -1,4 +1,5 @@
 #include "handmade.hpp"
+
 #include "linux/wayland.hpp"
 #include "linux/pipewire.hpp"
 
@@ -14,17 +15,20 @@ main()
     audio.init(48000);
 
     i16 samples[2 * 48000];
-    State state = { .running = true, .tone_hz = 256 };
+    State state = {};
+    state.tone_hz = 440;
     Input input = {};
+    Actions actions = {};
 
-    while (state.running) {
+    while (!state.quit) {
         window.process_events(&input);
-        update(&state, &input);
-        render(&state, &window.backbuffer);
+        parse_actions(&actions, &input);
+        update(&state, &actions);
+        render(&window.backbuffer, &state);
         window.present();
 
         SoundBuffer sound = { .samples = samples, .frame_count = audio.frames_to_write(), .sample_rate = 48000 };
-        output_sound(&state, &sound);
+        output_sound(&sound, &state);
         audio.write(&sound);
     }
     return 0;

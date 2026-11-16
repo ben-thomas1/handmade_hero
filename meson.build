@@ -33,6 +33,7 @@ if get_option('buildtype') == 'debug'
     '-Wnull-dereference',
     '-Wdouble-promotion',
     '-Wmissing-declarations',
+    '-Wmissing-prototypes',
     '-Wimplicit-fallthrough',
     '-fno-sanitize-recover=all',
     '-fno-omit-frame-pointer',

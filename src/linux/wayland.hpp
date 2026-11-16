@@ -22,6 +22,9 @@ struct Window {
     bool frame_pending;
     Backbuffer backbuffer;
     Input input;
+    // Surface coordinates of the pointer, as of its last motion over the window.
+    f64 pointer_x;
+    f64 pointer_y;
 
     void init(u32 width, u32 height);
     void process_events(Input *out);
