@@ -46,6 +46,9 @@ Audio::init(u32 sample_rate)
     events.version = PW_VERSION_STREAM_EVENTS;
     events.process = on_process;
 
+#ifndef NDEBUG
+    setenv("PIPEWIRE_DLCLOSE", "false", 0);
+#endif
     pw_init(nullptr, nullptr);
     this->loop = pw_thread_loop_new("handmade-hero-audio", nullptr);
     pw_thread_loop_start(this->loop);
