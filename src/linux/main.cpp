@@ -4,19 +4,30 @@
 #include "linux/pipewire.hpp"
 
 
-// Global so it stays reachable at exit: the OS frees it, and LeakSanitizer doesn't report it.
+constexpr u32 WINDOW_WIDTH  = 1280;
+constexpr u32 WINDOW_HEIGHT =  720;
+constexpr u32 AUDIO_RATE = 48'000;
+constexpr u32 AUDIO_TONE_HZ = 440;
+
+
+// Global so mem leak detector doesn't trigger on exit
+static Audio audio;
 static Window window;
 
 i32
 main()
 {
-    window.init(1280, 720);
-    Audio audio = {};
-    audio.init(48000);
-
-    i16 samples[2 * 48000];
+    window.init(WINDOW_WIDTH, WINDOW_HEIGHT);
+    audio.init(AUDIO_RATE);
+    
+    SoundBuffer sound = {};
+    i16 samples[2 * AUDIO_RATE];
+    sound.samples = samples;
+    sound.sample_rate = AUDIO_RATE;
+    
     State state = {};
-    state.tone_hz = 440;
+    state.tone_hz = AUDIO_TONE_HZ;
+    
     Input input = {};
     Actions actions = {};
 
@@ -27,7 +38,7 @@ main()
         render(&window.backbuffer, &state);
         window.present();
 
-        SoundBuffer sound = { .samples = samples, .frame_count = audio.frames_to_write(), .sample_rate = 48000 };
+        sound.frame_count = audio.frames_to_write();
         output_sound(&sound, &state);
         audio.write(&sound);
     }

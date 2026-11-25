@@ -25,8 +25,8 @@ update(State *state, Actions *actions)
 {
     if (actions->quit) state->quit = true;
 
-    i32 dx = (i32)actions->move_right - (i32)actions->move_left;
-    i32 dy = (i32)actions->move_down - (i32)actions->move_up;
+    i32 dx = (i32)actions->move_left - (i32)actions->move_right;
+    i32 dy = (i32)actions->move_up - (i32)actions->move_down;
 
     if (actions->toggle_red_render)   state->hide_red   = !state->hide_red;
     if (actions->toggle_green_render) state->hide_green = !state->hide_green;
@@ -34,7 +34,7 @@ update(State *state, Actions *actions)
 
     state->x_offset += 4 * dx;
     state->y_offset += 4 * dy;
-    state->tone_hz = 256.0f - 128.0f * (f32)dy;
+    state->tone_hz = 256.0f + 128.0f * (f32)dy;
 }
 
 void
