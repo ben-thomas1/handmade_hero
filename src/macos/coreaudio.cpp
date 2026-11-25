@@ -91,3 +91,13 @@ Audio::write(SoundBuffer *sound)
     this->frames_written += n;
     os_unfair_lock_unlock(&this->lock);
 }
+
+void
+Audio::shutdown()
+{
+    // Waits for the audio thread to finish its current callback.
+    AudioOutputUnitStop(this->unit);
+    AudioUnitUninitialize(this->unit);
+    AudioComponentInstanceDispose(this->unit);
+    std::free(this->samples);
+}

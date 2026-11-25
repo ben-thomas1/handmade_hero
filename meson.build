@@ -13,9 +13,6 @@ cpp_args = [
   '-fno-rtti',
 ]
 link_args = []
-# Position-independent executable flags must stay off the shared game library.
-exe_cpp_args = []
-exe_link_args = []
 target_options = []
 
 if get_option('buildtype') == 'debug'
@@ -49,9 +46,6 @@ elif get_option('buildtype') == 'release'
     '-fomit-frame-pointer',
     '-fno-stack-protector',
   ]
-  exe_cpp_args += [
-    '-fPIE',
-  ]
   target_options += [
     'b_lto=true',
     'b_ndebug=true',
@@ -61,9 +55,6 @@ elif get_option('buildtype') == 'release'
     cpp_args += [
       '-fcf-protection=full',
     ]
-    exe_link_args += [
-      '-pie',
-    ]
     link_args += [
       '-Wl,-z,relro,-z,now',
       '-Wl,-z,noexecstack',
@@ -72,6 +63,15 @@ elif get_option('buildtype') == 'release'
     cpp_args += [
       '-mbranch-protection=standard',
     ]
+  endif
+
+  # Lets the vectoriser call SIMD versions of math functions such as sinf. Passed at link time too, for LTO.
+  if host_machine.system() == 'linux'
+    cpp_args += ['-fveclib=libmvec']
+    link_args += ['-fveclib=libmvec', '-lmvec']
+  elif host_machine.system() == 'darwin'
+    cpp_args += ['-fveclib=Accelerate']
+    link_args += ['-fveclib=Accelerate', '-framework', 'Accelerate']
   endif
 endif
 

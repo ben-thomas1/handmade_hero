@@ -4,14 +4,14 @@
 #include "macos/coreaudio.hpp"
 
 
-// Global so the audio thread can still read it while the process exits.
-static Audio audio;
+// Global so it stays reachable at exit: the OS frees it, and LeakSanitizer doesn't report it.
+static Window window;
 
 i32
 main()
 {
-    Window window = {};
     window.init(1280, 720);
+    Audio audio = {};
     audio.init(48000);
 
     i16 samples[2 * 48000];
@@ -31,5 +31,6 @@ main()
         output_sound(&sound, &state);
         audio.write(&sound);
     }
+    audio.shutdown();
     return 0;
 }

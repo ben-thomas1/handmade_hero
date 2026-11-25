@@ -94,3 +94,14 @@ Audio::write(SoundBuffer *sound)
     this->frames_written += n;
     pw_thread_loop_unlock(this->loop);
 }
+
+void
+Audio::shutdown()
+{
+    // Joins the audio thread, so nothing below races with on_process.
+    pw_thread_loop_stop(this->loop);
+    pw_stream_destroy(this->stream);
+    pw_thread_loop_destroy(this->loop);
+    pw_deinit();
+    std::free(this->samples);
+}

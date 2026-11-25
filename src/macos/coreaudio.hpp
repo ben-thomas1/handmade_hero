@@ -22,4 +22,5 @@ struct Audio {
     // Frames to write to keep the ring a fixed latency ahead of playback.
     u32 frames_to_write();
     void write(SoundBuffer *sound);
+    void shutdown();
 };
